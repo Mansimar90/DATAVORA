@@ -191,69 +191,193 @@ def chart_layout(fig, title=None):
     )
     return fig
 
+
 def pdf_report(df, filename):
     try:
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import cm
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.platypus import (
+            SimpleDocTemplate, Paragraph, Spacer,
+            Table, LongTable, TableStyle
+        )
+        from xml.sax.saxutils import escape
     except ImportError:
         return None
 
     buffer = BytesIO()
+
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4,
-        rightMargin=1.8*cm, leftMargin=1.8*cm,
-        topMargin=1.6*cm, bottomMargin=1.6*cm
+        buffer,
+        pagesize=A4,
+        rightMargin=1.8 * cm,
+        leftMargin=1.8 * cm,
+        topMargin=2.3 * cm,
+        bottomMargin=2.0 * cm,
+        title="DATAVORA Dataset Analysis Report",
+        author="DATAVORA"
     )
+
+    sage = colors.HexColor("#87977A")
+    dark = colors.HexColor("#342F29")
+    muted = colors.HexColor("#81796E")
+    cream = colors.HexColor("#F7F5F0")
+    border = colors.HexColor("#E7E0D4")
+    white = colors.white
+
     styles = getSampleStyleSheet()
+
     styles.add(ParagraphStyle(
-        name="DATAVORA", parent=styles["Title"],
-        textColor=colors.HexColor("#52634A"), fontSize=22, leading=27
+        name="BrandTitle",
+        parent=styles["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=25,
+        leading=30,
+        textColor=sage,
+        alignment=0,
+        spaceAfter=5
     ))
+
+    styles.add(ParagraphStyle(
+        name="ReportSubtitle",
+        parent=styles["Normal"],
+        fontSize=12,
+        textColor=muted,
+        spaceAfter=15
+    ))
+
+    styles.add(ParagraphStyle(
+        name="SectionHeading",
+        parent=styles["Heading2"],
+        fontSize=13,
+        leading=17,
+        textColor=dark,
+        spaceBefore=15,
+        spaceAfter=9
+    ))
+
+    styles.add(ParagraphStyle(
+        name="SmallText",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=11,
+        textColor=dark
+    ))
+
     story = [
-        Paragraph("DATAVORA", styles["DATAVORA"]),
-        Paragraph("Dataset Analysis Report", styles["Heading2"]),
-        Spacer(1, 8),
-        Paragraph(f"File: {filename}", styles["BodyText"]),
-        Paragraph(f"Generated: {datetime.now().strftime('%d %B %Y, %H:%M')}", styles["BodyText"]),
-        Spacer(1, 12)
+        Paragraph("DATAVORA", styles["BrandTitle"]),
+        Paragraph("DATASET ANALYSIS REPORT", styles["ReportSubtitle"]),
+        Paragraph(f"<b>File:</b> {escape(str(filename))}", styles["Normal"]),
+        Paragraph(
+            f"<b>Generated:</b> {datetime.now().strftime('%d %B %Y, %H:%M')}",
+            styles["Normal"]
+        ),
+        Spacer(1, 18)
     ]
+
+    # Dataset overview
+    story.append(
+        Paragraph("01. Dataset Overview", styles["SectionHeading"])
+    )
+
     overview = [
-        ["Metric", "Value"],
-        ["Rows", f"{len(df):,}"],
-        ["Columns", f"{len(df.columns):,}"],
-        ["Missing cells", f"{int(df.isna().sum().sum()):,}"],
-        ["Duplicate rows", f"{int(df.duplicated().sum()):,}"]
+        ["METRIC", "VALUE"],
+        ["Total Rows", f"{len(df):,}"],
+        ["Total Columns", f"{len(df.columns):,}"],
+        ["Missing Cells", f"{int(df.isna().sum().sum()):,}"],
+        ["Duplicate Rows", f"{int(df.duplicated().sum()):,}"]
     ]
-    table = Table(overview, colWidths=[7*cm, 7*cm])
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#EDE8DD")),
-        ("TEXTCOLOR", (0,0), (-1,0), colors.HexColor("#342F29")),
-        ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#D8D0C2")),
-        ("PADDING", (0,0), (-1,-1), 7),
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold")
+
+    overview_table = Table(
+        overview,
+        colWidths=[8.7 * cm, 8.7 * cm]
+    )
+
+    overview_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), sage),
+        ("TEXTCOLOR", (0, 0), (-1, 0), white),
+        ("TEXTCOLOR", (0, 1), (-1, -1), dark),
+        ("BACKGROUND", (0, 1), (-1, -1), cream),
+        ("GRID", (0, 0), (-1, -1), 0.5, border),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("PADDING", (0, 0), (-1, -1), 9),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE")
     ]))
-    story.extend([table, Spacer(1, 14), Paragraph("Column Profile", styles["Heading2"])])
-    profile = [["Column", "Data type", "Missing", "Unique"]]
+
+    story.extend([
+        overview_table,
+        Spacer(1, 15),
+        Paragraph("02. Column Profile", styles["SectionHeading"])
+    ])
+
+    # Column profile
+    profile = [[
+        "Column Name", "Data Type", "Missing", "Unique"
+    ]]
+
     for col in df.columns:
         profile.append([
-            str(col)[:28], str(df[col].dtype),
+            Paragraph(escape(str(col)), styles["SmallText"]),
+            Paragraph(escape(str(df[col].dtype)), styles["SmallText"]),
             str(int(df[col].isna().sum())),
             str(int(df[col].nunique()))
         ])
-    profile_table = Table(profile, repeatRows=1)
+
+    profile_table = LongTable(
+        profile,
+        colWidths=[6.2 * cm, 4.2 * cm, 3.0 * cm, 4.0 * cm],
+        repeatRows=1
+    )
+
     profile_table.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#EDE8DD")),
-        ("GRID", (0,0), (-1,-1), 0.35, colors.HexColor("#D8D0C2")),
-        ("FONTSIZE", (0,0), (-1,-1), 8),
-        ("PADDING", (0,0), (-1,-1), 5)
+        ("BACKGROUND", (0, 0), (-1, 0), sage),
+        ("TEXTCOLOR", (0, 0), (-1, 0), white),
+        ("GRID", (0, 0), (-1, -1), 0.4, border),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [white, cream]),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("PADDING", (0, 0), (-1, -1), 7),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE")
     ]))
+
     story.append(profile_table)
-    doc.build(story)
+
+    # Page header and footer
+    def add_page_details(canvas, document):
+        canvas.saveState()
+        width, height = A4
+
+        canvas.setStrokeColor(border)
+        canvas.line(
+            1.8 * cm, height - 1.6 * cm,
+            width - 1.8 * cm, height - 1.6 * cm
+        )
+
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(muted)
+
+        canvas.drawString(
+            1.8 * cm, 1.15 * cm,
+            "DATAVORA | Turn Data Into Decisions"
+        )
+
+        canvas.drawRightString(
+            width - 1.8 * cm, 1.15 * cm,
+            f"Page {document.page}"
+        )
+
+        canvas.restoreState()
+
+    doc.build(
+        story,
+        onFirstPage=add_page_details,
+        onLaterPages=add_page_details
+    )
+
     buffer.seek(0)
     return buffer.getvalue()
+
 
 # ------------------------- SIDEBAR -----------------------
 
@@ -797,31 +921,187 @@ elif st.session_state.page == "Advanced Analytics":
 
 # ------------------------- REPORTS ------------------------
 
+
 elif st.session_state.page == "Reports":
-    st.title("Reports & Downloads")
+    from pathlib import Path
+
+    st.title("Reports & Business Intelligence")
+    st.write("Access your DATAVORA reports, exports and Power BI dashboards.")
+
+    # =====================================================
+    # POWER BI INTEGRATION
+    # =====================================================
+
+    st.markdown("---")
+    st.subheader("Power BI Dashboards")
+    st.caption("Explore dashboards created using Microsoft Power BI.")
+
+    powerbi_root = Path(__file__).parent / "powerbi"
+    dashboard_dir = powerbi_root / "dashboards"
+    preview_dir = powerbi_root / "previews"
+    report_dir = powerbi_root / "reports"
+
+    dashboard_dir.mkdir(parents=True, exist_ok=True)
+    preview_dir.mkdir(parents=True, exist_ok=True)
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    dashboard_files = sorted(dashboard_dir.glob("*.pbix"))
+    preview_files = sorted(
+        p for p in preview_dir.iterdir()
+        if p.suffix.lower() in [".png", ".jpg", ".jpeg", ".webp"]
+    )
+    powerbi_pdfs = sorted(report_dir.glob("*.pdf"))
+
+    # Dashboard previews
+    st.markdown("### Dashboard Gallery")
+
+    if preview_files:
+        columns = st.columns(2)
+
+        for index, preview in enumerate(preview_files):
+            with columns[index % 2]:
+                st.image(
+                    str(preview),
+                    caption=preview.stem.replace("_", " ").title(),
+                    use_container_width=True
+                )
+    else:
+        st.info(
+            "Power BI dashboard previews will appear here "
+            "once the dashboard images are added to powerbi/previews."
+        )
+
+    # Original PBIX downloads
+    st.markdown("### Power BI Project Files")
+
+    if dashboard_files:
+        for dashboard in dashboard_files:
+            with st.container(border=True):
+                col1, col2 = st.columns([3, 1])
+
+                with col1:
+                    st.markdown(f"**{dashboard.stem.replace('_', ' ').title()}**")
+                    st.caption("Microsoft Power BI project (.pbix)")
+
+                with col2:
+                    st.download_button(
+                        "Download PBIX",
+                        data=dashboard.read_bytes(),
+                        file_name=dashboard.name,
+                        mime="application/octet-stream",
+                        key=f"pbix_{dashboard.name}",
+                        use_container_width=True
+                    )
+    else:
+        st.info(
+            "Power BI project files will appear here "
+            "once added to powerbi/dashboards."
+        )
+
+    # Exported Power BI PDF reports
+    st.markdown("### Power BI PDF Reports")
+
+    if powerbi_pdfs:
+        for report in powerbi_pdfs:
+            with st.container(border=True):
+                col1, col2 = st.columns([3, 1])
+
+                with col1:
+                    st.markdown(f"**{report.stem.replace('_', ' ').title()}**")
+                    st.caption("Power BI exported PDF report")
+
+                with col2:
+                    st.download_button(
+                        "Download PDF",
+                        data=report.read_bytes(),
+                        file_name=report.name,
+                        mime="application/pdf",
+                        key=f"powerbi_pdf_{report.name}",
+                        use_container_width=True
+                    )
+    else:
+        st.info(
+            "Exported Power BI reports will appear here "
+            "once added to powerbi/reports."
+        )
+
+    st.markdown("---")
+
+    # =====================================================
+    # DATAVORA DATA EXPORTS
+    # =====================================================
+
+    st.subheader("DATAVORA Data Exports")
+
     df = get_data()
+
     if df is None:
-        st.warning("Upload a dataset first.")
+        st.warning("Upload a dataset to access DATAVORA data exports.")
     else:
         st.success("Your current dataset is ready for export.")
-        st.subheader("Dataset summary")
+
         c1, c2, c3 = st.columns(3)
         c1.metric("Rows", f"{len(df):,}")
         c2.metric("Columns", f"{len(df.columns):,}")
         c3.metric("Missing cells", f"{int(df.isna().sum().sum()):,}")
-        st.download_button("Download current dataset as CSV", df.to_csv(index=False).encode("utf-8"), "datavora_dataset.csv", "text/csv", use_container_width=True)
-        st.download_button("Download current dataset as Excel", export_excel(df, "Dataset"), "datavora_dataset.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+
+        st.markdown("### Download Dataset")
+
+        st.download_button(
+            "Download current dataset as CSV",
+            df.to_csv(index=False).encode("utf-8"),
+            "datavora_dataset.csv",
+            "text/csv",
+            use_container_width=True
+        )
+
+        st.download_button(
+            "Download current dataset as Excel",
+            export_excel(df, "Dataset"),
+            "datavora_dataset.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
         original = st.session_state.original_data
+
         if original is not None:
-            st.download_button("Download original uploaded data as CSV", original.to_csv(index=False).encode("utf-8"), "datavora_original_dataset.csv", "text/csv", use_container_width=True)
-        pdf_bytes = pdf_report(df, st.session_state.uploaded_filename or "Dataset")
+            st.download_button(
+                "Download original uploaded data as CSV",
+                original.to_csv(index=False).encode("utf-8"),
+                "datavora_original_dataset.csv",
+                "text/csv",
+                use_container_width=True
+            )
+
+        st.markdown("### DATAVORA PDF Analysis Report")
+
+        pdf_bytes = pdf_report(
+            df,
+            st.session_state.uploaded_filename or "Dataset"
+        )
+
         if pdf_bytes:
-            st.download_button("Download PDF analysis report", pdf_bytes, "datavora_analysis_report.pdf", "application/pdf", use_container_width=True)
+            st.download_button(
+                "Download PDF Analysis Report",
+                pdf_bytes,
+                "datavora_analysis_report.pdf",
+                "application/pdf",
+                use_container_width=True
+            )
         else:
-            st.warning("PDF report dependency not available. Install it with: pip install reportlab")
+            st.warning(
+                "PDF report dependency not available. "
+                "Install it using: pip install reportlab"
+            )
+
         if st.session_state.cleaning_history:
-            st.subheader("Cleaning history")
-            display_table(pd.DataFrame(st.session_state.cleaning_history), height=250)
+            st.subheader("Cleaning History")
+            display_table(
+                pd.DataFrame(st.session_state.cleaning_history),
+                height=250
+            )
+
 
 # ------------------------- FOOTER -------------------------
 
