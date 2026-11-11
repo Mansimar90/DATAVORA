@@ -9,13 +9,13 @@ from io import BytesIO
 from datetime import datetime
 
 # =========================================================
-# DATAVORA — Universal Data Analytics Platform
+# DATAVORA Ã¢â‚¬â€ Universal Data Analytics Platform
 # Improved core application
 # =========================================================
 
 st.set_page_config(
     page_title="DATAVORA | Data Analytics Platform",
-    page_icon="📊",
+    page_icon="Ã°Å¸â€œÅ ",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -32,8 +32,24 @@ html, body, [class*="css"] {font-family: 'Inter', sans-serif;}
 h1,h2,h3 {font-family:'Plus Jakarta Sans',sans-serif!important;color:#342F29!important;}
 [data-testid="stSidebar"] .stButton button {width:100%;text-align:left;border-radius:10px;padding:11px 14px;font-weight:600;}
 .stButton button[kind="primary"] {background:#87977A;border-color:#87977A;color:white;}
-div[data-testid="stMetric"] {background:#FFFDF8;border:1px solid #E7E0D4;padding:14px 16px;border-radius:13px;}
-div[data-testid="stMetric"] label {color:#81796E;}
+div[data-testid="stMetric"] {
+    background:#FFFDF8;
+    border:1px solid #E7E0D4;
+    padding:14px 16px;
+    border-radius:13px;
+}
+div[data-testid="stMetric"] label,
+div[data-testid="stMetricLabel"] {
+    color:#81796E !important;
+}
+div[data-testid="stMetricValue"],
+div[data-testid="stMetricValue"] > div {
+    color:#342F29 !important;
+    font-weight:700 !important;
+}
+div[data-testid="stMetricDelta"] {
+    color:#87977A !important;
+}
 .card {background:#FFFDF8;border:1px solid #E7E0D4;border-radius:16px;padding:22px;}
 .small-note {color:#81796E;font-size:0.88rem;}
 hr {border-color:#E7E0D4;}
@@ -102,16 +118,49 @@ def apply_cleaned_data(new_df, description):
 def display_table(df, title=None, height=420):
     if title:
         st.markdown(f"### {title}")
+
     if df is None or df.empty:
         st.info("No data available.")
         return
+
+    styled_df = (
+        df.style
+        .set_table_styles([
+            {
+                "selector": "th",
+                "props": [
+                    ("background-color", "#EDE8DD"),
+                    ("color", "#342F29"),
+                    ("font-weight", "700"),
+                    ("border", "1px solid #E7E0D4")
+                ]
+            },
+            {
+                "selector": "td",
+                "props": [
+                    ("background-color", "#FFFDF8"),
+                    ("color", "#342F29"),
+                    ("border", "1px solid #E7E0D4")
+                ]
+            },
+            {
+                "selector": "tbody tr:nth-child(even) td",
+                "props": [("background-color", "#F7F5F0")]
+            }
+        ])
+    )
+
     st.dataframe(
-        df,
+        styled_df,
         height=height,
         use_container_width=True,
         hide_index=False
     )
-    st.caption(f"{len(df):,} rows × {len(df.columns):,} columns. Use the table's horizontal scrollbar to inspect every column.")
+
+    st.caption(
+        f"{len(df):,} rows &middot; {len(df.columns):,} columns. "
+        "Use the table's horizontal scrollbar to inspect every column."
+    )
 
 def export_excel(df, sheet_name="Data"):
     output = BytesIO()
@@ -181,16 +230,34 @@ def money(value):
 
 def chart_layout(fig, title=None):
     fig.update_layout(
-        title=title or fig.layout.title.text,
+        title=dict(
+            text=title or fig.layout.title.text,
+            font=dict(family="Plus Jakarta Sans", size=21, color="#342F29")
+        ),
         template="plotly_white",
         paper_bgcolor="#FFFDF8",
         plot_bgcolor="#FFFDF8",
-        font=dict(family="Inter", color="#342F29"),
-        margin=dict(l=30, r=25, t=65, b=35),
-        legend_title_text=""
+        font=dict(family="Inter", color="#342F29", size=13),
+        margin=dict(l=45, r=30, t=70, b=45),
+        legend_title_text="",
+        legend=dict(
+            font=dict(color="#342F29"),
+            bgcolor="#FFFDF8"
+        ),
+        xaxis=dict(
+            title_font=dict(color="#342F29"),
+            tickfont=dict(color="#342F29"),
+            gridcolor="#E7E0D4",
+            zerolinecolor="#E7E0D4"
+        ),
+        yaxis=dict(
+            title_font=dict(color="#342F29"),
+            tickfont=dict(color="#342F29"),
+            gridcolor="#E7E0D4",
+            zerolinecolor="#E7E0D4"
+        )
     )
     return fig
-
 
 def pdf_report(df, filename):
     try:
@@ -200,11 +267,16 @@ def pdf_report(df, filename):
         from reportlab.lib.units import cm
         from reportlab.platypus import (
             SimpleDocTemplate, Paragraph, Spacer,
-            Table, LongTable, TableStyle
+            Table, LongTable, TableStyle, PageBreak,
+            KeepTogether
         )
+        from reportlab.graphics.shapes import Drawing
+        from reportlab.graphics.charts.barcharts import VerticalBarChart
         from xml.sax.saxutils import escape
     except ImportError:
         return None
+
+    import math
 
     buffer = BytesIO()
 
@@ -213,18 +285,20 @@ def pdf_report(df, filename):
         pagesize=A4,
         rightMargin=1.8 * cm,
         leftMargin=1.8 * cm,
-        topMargin=2.3 * cm,
-        bottomMargin=2.0 * cm,
-        title="DATAVORA Dataset Analysis Report",
+        topMargin=2.2 * cm,
+        bottomMargin=1.8 * cm,
+        title="DATAVORA Business Intelligence Report",
         author="DATAVORA"
     )
 
     sage = colors.HexColor("#87977A")
+    sage_dark = colors.HexColor("#718266")
     dark = colors.HexColor("#342F29")
     muted = colors.HexColor("#81796E")
     cream = colors.HexColor("#F7F5F0")
     border = colors.HexColor("#E7E0D4")
     white = colors.white
+    pale_sage = colors.HexColor("#E8EDE3")
 
     styles = getSampleStyleSheet()
 
@@ -232,8 +306,8 @@ def pdf_report(df, filename):
         name="BrandTitle",
         parent=styles["Title"],
         fontName="Helvetica-Bold",
-        fontSize=25,
-        leading=30,
+        fontSize=27,
+        leading=32,
         textColor=sage,
         alignment=0,
         spaceAfter=5
@@ -242,141 +316,444 @@ def pdf_report(df, filename):
     styles.add(ParagraphStyle(
         name="ReportSubtitle",
         parent=styles["Normal"],
-        fontSize=12,
+        fontSize=11,
+        leading=16,
         textColor=muted,
-        spaceAfter=15
+        spaceAfter=10
     ))
 
     styles.add(ParagraphStyle(
         name="SectionHeading",
         parent=styles["Heading2"],
-        fontSize=13,
-        leading=17,
+        fontName="Helvetica-Bold",
+        fontSize=14,
+        leading=18,
         textColor=dark,
-        spaceBefore=15,
+        spaceBefore=17,
         spaceAfter=9
     ))
 
     styles.add(ParagraphStyle(
-        name="SmallText",
+        name="SubHeading",
+        parent=styles["Heading3"],
+        fontSize=10,
+        leading=14,
+        textColor=sage_dark,
+        spaceBefore=10,
+        spaceAfter=6
+    ))
+
+    styles.add(ParagraphStyle(
+        name="BodySmall",
         parent=styles["Normal"],
-        fontSize=8,
-        leading=11,
+        fontSize=8.5,
+        leading=13,
         textColor=dark
     ))
 
+    styles.add(ParagraphStyle(
+        name="TableText",
+        parent=styles["Normal"],
+        fontSize=7.5,
+        leading=10,
+        textColor=dark
+    ))
+
+    def fmt(value):
+        try:
+            if pd.isna(value):
+                return "N/A"
+            value = float(value)
+            if not math.isfinite(value):
+                return "N/A"
+            return f"{value:,.2f}"
+        except (TypeError, ValueError):
+            return str(value)
+
+    def make_table(data, widths, font_size=8):
+        table = LongTable(
+            data,
+            colWidths=widths,
+            repeatRows=1,
+            hAlign="LEFT"
+        )
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), sage),
+            ("TEXTCOLOR", (0, 0), (-1, 0), white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("TEXTCOLOR", (0, 1), (-1, -1), dark),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [white, cream]),
+            ("GRID", (0, 0), (-1, -1), 0.4, border),
+            ("FONTSIZE", (0, 0), (-1, -1), font_size),
+            ("PADDING", (0, 0), (-1, -1), 7),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE")
+        ]))
+        return table
+
+    total_rows = len(df)
+    total_cols = len(df.columns)
+    missing_total = int(df.isna().sum().sum())
+    duplicate_total = int(df.duplicated().sum())
+    total_cells = total_rows * total_cols
+    missing_percent = (
+        missing_total / total_cells * 100 if total_cells else 0
+    )
+
+    numeric_cols = df.select_dtypes(include="number").columns.tolist()
+    categorical_cols = [
+        col for col in df.columns
+        if col not in numeric_cols
+        and not pd.api.types.is_datetime64_any_dtype(df[col])
+    ]
+
     story = [
+        Spacer(1, 0.5 * cm),
         Paragraph("DATAVORA", styles["BrandTitle"]),
-        Paragraph("DATASET ANALYSIS REPORT", styles["ReportSubtitle"]),
-        Paragraph(f"<b>File:</b> {escape(str(filename))}", styles["Normal"]),
+        Paragraph(
+            "BUSINESS INTELLIGENCE & DATA ANALYSIS REPORT",
+            styles["ReportSubtitle"]
+        ),
+        Paragraph(
+            f"<b>Source file:</b> {escape(str(filename))}",
+            styles["BodySmall"]
+        ),
         Paragraph(
             f"<b>Generated:</b> {datetime.now().strftime('%d %B %Y, %H:%M')}",
-            styles["Normal"]
+            styles["BodySmall"]
         ),
-        Spacer(1, 18)
+        Spacer(1, 0.35 * cm),
+        Paragraph(
+            "A structured overview of dataset characteristics, "
+            "statistical patterns and data quality.",
+            styles["BodySmall"]
+        )
     ]
 
-    # Dataset overview
-    story.append(
-        Paragraph("01. Dataset Overview", styles["SectionHeading"])
+    # 01. Executive summary
+    story.append(Paragraph("01. Executive Summary", styles["SectionHeading"]))
+
+    summary_text = (
+        f"The analysed dataset contains <b>{total_rows:,} records</b> "
+        f"across <b>{total_cols:,} columns</b>. "
+        f"It contains <b>{len(numeric_cols)} numeric columns</b> and "
+        f"<b>{len(categorical_cols)} categorical columns</b>. "
+        f"The analysis identified <b>{missing_total:,} missing cells</b> "
+        f"({missing_percent:.2f}% of all cells) and "
+        f"<b>{duplicate_total:,} exact duplicate rows</b>."
     )
 
-    overview = [
-        ["METRIC", "VALUE"],
-        ["Total Rows", f"{len(df):,}"],
-        ["Total Columns", f"{len(df.columns):,}"],
-        ["Missing Cells", f"{int(df.isna().sum().sum()):,}"],
-        ["Duplicate Rows", f"{int(df.duplicated().sum()):,}"]
-    ]
+    story.append(Paragraph(summary_text, styles["BodySmall"]))
 
-    overview_table = Table(
-        overview,
-        colWidths=[8.7 * cm, 8.7 * cm]
-    )
-
-    overview_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), sage),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("TEXTCOLOR", (0, 1), (-1, -1), dark),
-        ("BACKGROUND", (0, 1), (-1, -1), cream),
-        ("GRID", (0, 0), (-1, -1), 0.5, border),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("PADDING", (0, 0), (-1, -1), 9),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE")
-    ]))
+    if missing_total == 0 and duplicate_total == 0:
+        quality_text = (
+            "The current dataset contains no missing cells or exact "
+            "duplicate rows."
+        )
+    else:
+        quality_text = (
+            "The dataset has data-quality items that may require review "
+            "before further analysis."
+        )
 
     story.extend([
-        overview_table,
-        Spacer(1, 15),
-        Paragraph("02. Column Profile", styles["SectionHeading"])
+        Spacer(1, 8),
+        Paragraph(quality_text, styles["BodySmall"])
     ])
 
-    # Column profile
+    # 02. Dataset overview
+    story.append(Paragraph("02. Dataset Overview", styles["SectionHeading"]))
+
+    overview = [
+        ["DATASET METRIC", "VALUE"],
+        ["Total records", f"{total_rows:,}"],
+        ["Total columns", f"{total_cols:,}"],
+        ["Numeric columns", f"{len(numeric_cols):,}"],
+        ["Categorical columns", f"{len(categorical_cols):,}"],
+        ["Missing cells", f"{missing_total:,}"],
+        ["Missing cell percentage", f"{missing_percent:.2f}%"],
+        ["Duplicate rows", f"{duplicate_total:,}"]
+    ]
+
+    story.append(make_table(overview, [8.7 * cm, 8.7 * cm]))
+    
+    # 03. Column profile
+    story.append(Paragraph("03. Column Profile", styles["SectionHeading"]))
+
     profile = [[
         "Column Name", "Data Type", "Missing", "Unique"
     ]]
 
     for col in df.columns:
         profile.append([
-            Paragraph(escape(str(col)), styles["SmallText"]),
-            Paragraph(escape(str(df[col].dtype)), styles["SmallText"]),
-            str(int(df[col].isna().sum())),
-            str(int(df[col].nunique()))
+            Paragraph(escape(str(col)), styles["TableText"]),
+            Paragraph(escape(str(df[col].dtype)), styles["TableText"]),
+            f"{int(df[col].isna().sum()):,}",
+            f"{int(df[col].nunique(dropna=True)):,}"
         ])
 
-    profile_table = LongTable(
+    story.append(make_table(
         profile,
-        colWidths=[6.2 * cm, 4.2 * cm, 3.0 * cm, 4.0 * cm],
-        repeatRows=1
+        [6.2 * cm, 4.2 * cm, 3.0 * cm, 4.0 * cm],
+        7.5
+    ))
+
+    # 04. Statistical summary
+    story.append(Paragraph("04. Statistical Summary", styles["SectionHeading"]))
+
+    if numeric_cols:
+        statistical = [[
+            "Measure", "Count", "Mean", "Median",
+            "Minimum", "Maximum", "Std. Dev."
+        ]]
+
+        for col in numeric_cols[:12]:
+            series = pd.to_numeric(df[col], errors="coerce").dropna()
+            statistical.append([
+                Paragraph(escape(str(col)), styles["TableText"]),
+                f"{len(series):,}",
+                fmt(series.mean()) if len(series) else "N/A",
+                fmt(series.median()) if len(series) else "N/A",
+                fmt(series.min()) if len(series) else "N/A",
+                fmt(series.max()) if len(series) else "N/A",
+                fmt(series.std()) if len(series) > 1 else "N/A"
+            ])
+
+        story.append(make_table(
+            statistical,
+            [3.0*cm, 1.8*cm, 2.4*cm, 2.4*cm,
+             2.4*cm, 2.4*cm, 2.4*cm],
+            6.5
+        ))
+
+        if len(numeric_cols) > 12:
+            story.append(Paragraph(
+                "Statistical summary is limited to the first 12 numeric "
+                "columns for report readability.",
+                styles["BodySmall"]
+            ))
+    else:
+        story.append(Paragraph(
+            "No numeric columns were available for statistical analysis.",
+            styles["BodySmall"]
+        ))
+
+    # 05. Data quality
+    story.append(Paragraph("05. Data Quality Analysis", styles["SectionHeading"]))
+
+    quality = [["QUALITY CHECK", "RESULT", "OBSERVATION"]]
+    quality.append([
+        "Missing values",
+        f"{missing_total:,}",
+        "Present" if missing_total else "None detected"
+    ])
+    quality.append([
+        "Duplicate records",
+        f"{duplicate_total:,}",
+        "Present" if duplicate_total else "None detected"
+    ])
+
+    story.append(make_table(
+        quality,
+        [4.2 * cm, 3.0 * cm, 10.2 * cm]
+    ))
+
+    missing_by_column = df.isna().sum()
+    missing_by_column = missing_by_column[missing_by_column > 0].sort_values(
+        ascending=False
     )
 
-    profile_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), sage),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("GRID", (0, 0), (-1, -1), 0.4, border),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [white, cream]),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("PADDING", (0, 0), (-1, -1), 7),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE")
-    ]))
+    if not missing_by_column.empty:
+        story.append(Paragraph(
+            "Columns with Missing Values",
+            styles["SubHeading"]
+        ))
 
-    story.append(profile_table)
+        missing_table = [["COLUMN", "MISSING CELLS", "PERCENTAGE"]]
 
-    # Page header and footer
+        for col, count in missing_by_column.items():
+            percentage = count / total_rows * 100 if total_rows else 0
+            missing_table.append([
+                Paragraph(escape(str(col)), styles["TableText"]),
+                f"{int(count):,}",
+                f"{percentage:.2f}%"
+            ])
+
+        story.append(make_table(
+            missing_table,
+            [8.0 * cm, 4.5 * cm, 4.9 * cm]
+        ))
+
+    # 06. Business insights
+    story.append(Paragraph("06. Business Insights", styles["SectionHeading"]))
+
+    normalized = {
+        str(col).lower().replace("_", " ").strip(): col
+        for col in df.columns
+    }
+
+    def find_business_column(keywords):
+        for name, original in normalized.items():
+            if any(word in name for word in keywords):
+                return original
+        return None
+
+    sales_col = find_business_column(["sales", "revenue", "amount", "total"])
+    product_col = find_business_column(["product", "item", "service"])
+    region_col = find_business_column(["region", "territory", "location", "state"])
+    category_col = find_business_column(["category", "segment", "department"])
+    customer_col = find_business_column(["customer", "client", "buyer"])
+
+    business_rows = [["BUSINESS INDICATOR", "OBSERVATION"]]
+
+    if sales_col is not None and pd.api.types.is_numeric_dtype(df[sales_col]):
+        sales = pd.to_numeric(df[sales_col], errors="coerce").dropna()
+
+        business_rows.extend([
+            ["Detected measure", str(sales_col)],
+            ["Total value", fmt(sales.sum())],
+            ["Average value", fmt(sales.mean())],
+            ["Highest value", fmt(sales.max())]
+        ])
+
+        for label, col in [
+            ("Top product", product_col),
+            ("Top region", region_col),
+            ("Top category", category_col)
+        ]:
+            if col is not None:
+                grouped = df.groupby(col, dropna=False)[sales_col].sum()
+                if not grouped.empty:
+                    business_rows.append([
+                        label,
+                        f"{grouped.idxmax()} ({fmt(grouped.max())})"
+                    ])
+
+    if customer_col is not None:
+        business_rows.append([
+            "Distinct customers",
+            f"{df[customer_col].nunique(dropna=True):,}"
+        ])
+
+    if len(business_rows) > 1:
+        story.append(make_table(
+            business_rows,
+            [6.0 * cm, 11.4 * cm]
+        ))
+    else:
+        story.append(Paragraph(
+            "No recognised sales or business measure was identified. "
+            "Business-specific metrics are therefore not included. "
+            "Dataset and statistical analysis remain available above.",
+            styles["BodySmall"]
+        ))
+
+    # 07. Visual analytics
+    story.append(Paragraph("07. Visual Analytics", styles["SectionHeading"]))
+
+    if (
+        sales_col is not None
+        and pd.api.types.is_numeric_dtype(df[sales_col])
+        and (product_col is not None or category_col is not None)
+    ):
+        group_col = product_col if product_col is not None else category_col
+
+        chart_data = (
+            df.groupby(group_col, dropna=False)[sales_col]
+            .sum()
+            .sort_values(ascending=False)
+            .head(8)
+        )
+
+        if not chart_data.empty:
+            drawing = Drawing(450, 220)
+            chart = VerticalBarChart()
+            chart.x = 45
+            chart.y = 35
+            chart.height = 145
+            chart.width = 370
+            chart.data = [[float(v) for v in chart_data.values]]
+            chart.categoryAxis.categoryNames = [
+                str(v)[:15] for v in chart_data.index
+            ]
+            chart.categoryAxis.labels.fontSize = 7
+            chart.valueAxis.labels.fontSize = 7
+            chart.valueAxis.labelTextFormat = "%.0f"
+            chart.bars[0].fillColor = sage
+            chart.bars[0].strokeColor = sage_dark
+            chart.valueAxis.strokeColor = border
+            chart.categoryAxis.strokeColor = border
+            chart.valueAxis.gridStrokeColor = border
+            chart.barWidth = 22
+            chart.groupSpacing = 12
+            drawing.add(chart)
+            story.append(Paragraph(
+                f"Top {len(chart_data)} groups by {sales_col}",
+                styles["SubHeading"]
+            ))
+            story.append(drawing)
+    else:
+        story.append(Paragraph(
+            "A business category and numeric sales measure were not both "
+            "identified. No business performance chart was generated.",
+            styles["BodySmall"]
+        ))
+
+    story.append(Spacer(1, 12))
+    story.append(Paragraph(
+        "End of Report | DATAVORA - Turn Data Into Decisions",
+        styles["BodySmall"]
+    ))
+
+    # Header and footer
     def add_page_details(canvas, document):
         canvas.saveState()
         width, height = A4
 
         canvas.setStrokeColor(border)
+        canvas.setLineWidth(0.6)
         canvas.line(
-            1.8 * cm, height - 1.6 * cm,
-            width - 1.8 * cm, height - 1.6 * cm
+            1.8 * cm, height - 1.55 * cm,
+            width - 1.8 * cm, height - 1.55 * cm
+        )
+
+        canvas.setFont("Helvetica-Bold", 8)
+        canvas.setFillColor(sage)
+        canvas.drawString(
+            1.8 * cm, height - 1.25 * cm,
+            "DATAVORA | BUSINESS INTELLIGENCE"
+        )
+
+        canvas.setStrokeColor(border)
+        canvas.line(
+            1.8 * cm, 1.45 * cm,
+            width - 1.8 * cm, 1.45 * cm
         )
 
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(muted)
-
         canvas.drawString(
-            1.8 * cm, 1.15 * cm,
+            1.8 * cm, 1.0 * cm,
             "DATAVORA | Turn Data Into Decisions"
         )
-
         canvas.drawRightString(
-            width - 1.8 * cm, 1.15 * cm,
+            width - 1.8 * cm, 1.0 * cm,
             f"Page {document.page}"
         )
 
         canvas.restoreState()
 
-    doc.build(
-        story,
-        onFirstPage=add_page_details,
-        onLaterPages=add_page_details
-    )
+    try:
+        doc.build(
+            story,
+            onFirstPage=add_page_details,
+            onLaterPages=add_page_details
+        )
+    except Exception:
+        return None
 
     buffer.seek(0)
     return buffer.getvalue()
+
 
 
 # ------------------------- SIDEBAR -----------------------
@@ -390,11 +767,17 @@ with st.sidebar:
     """)
     st.markdown("### WORKSPACE")
     pages = [
-        ("🏠", "Dashboard"), ("📁", "Upload Data"),
-        ("🧹", "Data Cleaning"), ("📊", "Exploratory Analysis"),
-        ("📈", "Visualizations"), ("💡", "Smart Insights"),
-        ("🧠", "Advanced Analytics"), ("📄", "Reports")
-    ]
+    ("🏠", "Dashboard"),
+    ("📁", "Upload Data"),
+    ("🧹", "Data Cleaning"),
+    ("📊", "Exploratory Analysis"),
+    ("📈", "Visualizations"),
+    ("💡", "Smart Insights"),
+    ("🧠", "Advanced Analytics"),
+    ("📊", "Power BI"),
+    ("📥", "Download Reports")
+]
+
     for icon, page_name in pages:
         st.button(
             f"{icon}  {page_name}",
@@ -404,101 +787,453 @@ with st.sidebar:
             on_click=navigate,
             args=(page_name,)
         )
+
     st.markdown("---")
     st.html("""
-    <div style="background:#FFFDF8;border:1px solid #E7E0D4;border-radius:12px;padding:15px;">
-      <b>DATAVORA Workspace</b>
-      <div style="font-size:12px;color:#81796E;margin-top:7px;">Your universal data analytics workspace.</div>
-      <div style="font-size:11px;color:#87977A;margin-top:12px;">● SYSTEM ONLINE</div>
+    <div style="background:#FFFDF8;border:1px solid #E7E0D4;
+                border-radius:12px;padding:16px;">
+      <div style="color:#342F29;font-size:15px;font-weight:700;">
+        DATAVORA Workspace
+      </div>
+      <div style="font-size:12px;color:#81796E;margin-top:8px;">
+        Your universal data analytics workspace.
+      </div>
+      <div style="font-size:11px;color:#718266;font-weight:600;margin-top:13px;">
+        &#9679; SYSTEM ONLINE
+      </div>
     </div>
     """)
 
 # ------------------------- DASHBOARD ---------------------
 
 if st.session_state.page == "Dashboard":
-    st.title("Dashboard")
-    st.write("Welcome to your universal data analytics workspace.")
-    st.html("""
-    <div class="card">
-      <div style="color:#87977A;font-weight:700;letter-spacing:2px;font-size:13px;">YOUR DATA. YOUR DECISIONS.</div>
-      <h2 style="font-size:30px;margin:12px 0;">Make better decisions with DATAVORA.</h2>
-      <p style="color:#81796E;">Upload datasets, improve data quality, discover patterns and turn raw information into useful business insights.</p>
-    </div>
-    """)
+
     df = get_data()
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Dataset loaded", "Yes" if df is not None else "No")
-    c2.metric("Total rows", f"{len(df):,}" if df is not None else "0")
-    c3.metric("Total columns", f"{len(df.columns):,}" if df is not None else "0")
-    c4.metric("Missing cells", f"{int(df.isna().sum().sum()):,}" if df is not None else "0")
+
+    # DASHBOARD HEADER
+    st.markdown("""
+    <div style="
+        background:linear-gradient(120deg,#87977A,#A6AD86);
+        padding:34px 36px;
+        border-radius:18px;
+        margin-bottom:25px;
+    ">
+        <div style="font-size:12px;letter-spacing:2px;
+        color:#FFFDF8;font-weight:700;">
+            YOUR DATA. YOUR DECISIONS.
+        </div>
+        <h1 style="color:#FFFDF8!important;font-size:34px;
+        margin:13px 0;">
+            Welcome to DATAVORA
+        </h1>
+        <p style="color:#FFFDF8;font-size:15px;margin-bottom:0;">
+            Your complete workspace to analyse data, discover patterns
+            and make smarter business decisions.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # KPI CARDS
+    st.markdown("## Workspace Overview")
+
+    rows = len(df) if df is not None else 0
+    cols = len(df.columns) if df is not None else 0
+    missing = int(df.isna().sum().sum()) if df is not None else 0
+    duplicates = int(df.duplicated().sum()) if df is not None else 0
+
+    metrics = [
+        ("DATASET STATUS", "Loaded" if df is not None else "Not loaded",
+         "Current workspace status"),
+        ("TOTAL ROWS", f"{rows:,}", "Records in your dataset"),
+        ("TOTAL COLUMNS", f"{cols:,}", "Available data fields"),
+        ("MISSING CELLS", f"{missing:,}", "Values requiring attention")
+    ]
+
+    metric_cols = st.columns(4)
+
+    for column, (label, value, caption) in zip(metric_cols, metrics):
+        with column:
+            st.markdown(f"""
+            <div style="
+                background:#FFFDF8;
+                border:1px solid #E7E0D4;
+                border-top:4px solid #87977A;
+                border-radius:13px;
+                padding:19px 16px;
+                min-height:125px;
+            ">
+                <div style="font-size:11px;font-weight:700;
+                letter-spacing:1px;color:#81796E;">
+                    {label}
+                </div>
+                <div style="font-size:27px;font-weight:800;
+                color:#342F29;margin:10px 0 5px;">
+                    {value}
+                </div>
+                <div style="font-size:11px;color:#81796E;">
+                    {caption}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # QUICK ACTIONS
+    st.markdown("## Quick Actions")
+    st.caption("Jump directly to the tools you need.")
+
+    actions = [
+        ("Upload Data", "Upload Data",
+         "Import CSV and Excel files into your workspace."),
+        ("Clean Dataset", "Data Cleaning",
+         "Handle missing values, duplicates and data issues."),
+        ("Explore Data", "Exploratory Analysis",
+         "Understand patterns and explore your dataset."),
+        ("Power BI", "Power BI",
+         "Access your Power BI dashboards and reports.")
+    ]
+
+    action_cols = st.columns(4)
+
+    for column, (title, page, description) in zip(action_cols, actions):
+        with column:
+            st.markdown(f"""
+            <div style="
+                background:#FFFDF8;
+                border:1px solid #E7E0D4;
+                border-radius:13px;
+                padding:17px;
+                min-height:125px;
+            ">
+                <div style="font-size:16px;font-weight:700;
+                color:#342F29;margin-bottom:9px;">
+                    {title}
+                </div>
+                <div style="font-size:12px;line-height:1.6;
+                color:#81796E;">
+                    {description}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            if st.button(
+                f"Open {title}",
+                key=f"dashboard_action_{page}",
+                type="primary",
+                use_container_width=True
+            ):
+                navigate(page)
+                st.rerun()
+
+    st.markdown("---")
+
+    # DATASET SECTION
     if df is not None:
-        st.markdown("### Current dataset")
-        st.info(f"{st.session_state.uploaded_filename}"+(f" · Worksheet: {st.session_state.loaded_sheet}" if st.session_state.loaded_sheet else ""))
+
+        st.markdown("## Current Dataset")
+
+        filename = st.session_state.uploaded_filename or "Dataset"
+
+        c1, c2 = st.columns([3, 1])
+
+        with c1:
+            st.markdown(f"""
+            <div style="background:#FFFDF8;border:1px solid #E7E0D4;
+            border-radius:12px;padding:17px;">
+                <div style="font-size:11px;color:#87977A;
+                font-weight:700;letter-spacing:1px;">
+                    ACTIVE DATASET
+                </div>
+                <div style="font-size:19px;font-weight:700;
+                color:#342F29;margin-top:8px;">
+                    {filename}
+                </div>
+                <div style="font-size:12px;color:#81796E;
+                margin-top:6px;">
+                    {rows:,} records &middot; {cols:,} columns &middot;
+                    {duplicates:,} duplicate rows
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c2:
+            if st.button(
+                "Open Smart Insights",
+                type="primary",
+                use_container_width=True
+            ):
+                navigate("Smart Insights")
+                st.rerun()
+
+        st.markdown("### Dataset Preview")
         display_table(df.head(10), height=320)
-        if st.button("Open Smart Insights", type="primary"):
-            navigate("Smart Insights")
-            st.rerun()
+
+        st.markdown("### Data Quality Snapshot")
+
+        q1, q2, q3 = st.columns(3)
+        q1.metric("Missing Cells", f"{missing:,}")
+        q2.metric("Duplicate Rows", f"{duplicates:,}")
+        q3.metric(
+            "Complete Cells",
+            f"{int(df.size - missing):,}"
+        )
+
     else:
-        st.markdown("### Get started")
-        st.write("Upload an Excel or CSV file to begin.")
-        if st.button("Go to Upload Data", type="primary"):
+
+        st.markdown("## Get Started")
+
+        st.markdown("""
+        <div style="background:#FFFDF8;border:1px solid #E7E0D4;
+        border-radius:15px;padding:27px;">
+            <div style="font-size:21px;font-weight:700;
+            color:#342F29;">
+                Your workspace is ready.
+            </div>
+            <p style="color:#81796E;line-height:1.7;">
+                Upload your first CSV or Excel dataset to unlock
+                data cleaning, exploratory analysis, visualizations
+                and intelligent business insights.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button(
+            "Upload Your First Dataset",
+            type="primary",
+            use_container_width=True
+        ):
             navigate("Upload Data")
             st.rerun()
 
-# ------------------------- UPLOAD DATA --------------------
-
 elif st.session_state.page == "Upload Data":
-    st.title("Upload Your Dataset")
-    st.write("Upload CSV or Excel files. Workbooks with multiple worksheets are supported.")
-    uploaded_file = st.file_uploader("Choose your dataset", type=["csv", "xlsx", "xls"], key="datavora_uploader")
 
+    # PAGE HEADER
+    st.markdown("""
+    <div style="
+        background:linear-gradient(120deg,#87977A,#A6AD86);
+        padding:32px 36px;
+        border-radius:18px;
+        margin-bottom:25px;
+    ">
+        <div style="font-size:12px;letter-spacing:2px;
+        color:#FFFDF8;font-weight:700;">
+            DATA MANAGEMENT
+        </div>
+        <h1 style="color:#FFFDF8!important;font-size:34px;
+        margin:12px 0;">
+            Bring Your Data to DATAVORA
+        </h1>
+        <p style="color:#FFFDF8;font-size:15px;margin-bottom:0;">
+            Upload, organise and prepare your datasets for
+            meaningful analysis and smarter decisions.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # UPLOAD CARD
+    st.markdown("""
+    <div style="
+        background:#FFFDF8;
+        border:1px solid #E7E0D4;
+        border-left:5px solid #87977A;
+        border-radius:15px;
+        padding:23px 25px 12px;
+        margin-bottom:18px;
+    ">
+        <div style="font-size:21px;font-weight:700;color:#342F29;">
+            Upload Your Dataset
+        </div>
+        <p style="font-size:13px;color:#81796E;margin-top:7px;">
+            Select a CSV or Excel file from your device to get started.
+        </p>
+        <div style="font-size:12px;color:#87977A;font-weight:600;">
+            SUPPORTED FORMATS: CSV ? XLSX ? XLS
+            &nbsp;&nbsp; | &nbsp;&nbsp; MAXIMUM SIZE: 200 MB
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # UPLOADER STYLING
+    st.markdown("""
+    <style>
+    [data-testid="stFileUploader"] {
+        background:#FFFDF8 !important;
+        border:1px dashed #87977A !important;
+        border-radius:13px !important;
+        padding:15px !important;
+    }
+
+    [data-testid="stFileUploader"] section {
+        background:transparent !important;
+    }
+
+    [data-testid="stFileUploader"] button {
+        background:#87977A !important;
+        color:#FFFDF8 !important;
+        border:1px solid #87977A !important;
+        border-radius:9px !important;
+    }
+
+    [data-testid="stFileUploader"] button:hover {
+        background:#718266 !important;
+        color:#FFFDF8 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    uploaded_file = st.file_uploader(
+        "Choose your dataset",
+        type=["csv", "xlsx", "xls"],
+        key="datavora_uploader"
+    )
+
+    # FILE PROCESSING - EXISTING FUNCTIONALITY
     if uploaded_file is not None:
+
         file_bytes = uploaded_file.getvalue()
         signature = hashlib.sha256(file_bytes).hexdigest()
         filename = uploaded_file.name
+
         if filename.lower().endswith((".xlsx", ".xls")):
             try:
                 excel_file = pd.ExcelFile(BytesIO(file_bytes))
                 sheet_names = excel_file.sheet_names
-                st.success(f"Detected {len(sheet_names)} worksheet(s): {', '.join(sheet_names)}")
-                selected_sheet = st.selectbox("Select worksheet to analyse", sheet_names, key=f"sheet_{signature}")
+
+                st.success(
+                    f"Detected {len(sheet_names)} worksheet(s): "
+                    + ", ".join(sheet_names)
+                )
+
+                selected_sheet = st.selectbox(
+                    "Select worksheet to analyse",
+                    sheet_names,
+                    key=f"sheet_{signature}"
+                )
+
                 changed = (
                     st.session_state.loaded_signature != signature
                     or st.session_state.loaded_sheet != selected_sheet
                 )
+
                 if changed:
-                    loaded = pd.read_excel(excel_file, sheet_name=selected_sheet)
+                    loaded = pd.read_excel(
+                        excel_file,
+                        sheet_name=selected_sheet
+                    )
+
                     loaded, converted = auto_convert_dates(loaded)
-                    set_dataset(loaded, filename, signature, selected_sheet, file_bytes)
+
+                    set_dataset(
+                        loaded,
+                        filename,
+                        signature,
+                        selected_sheet,
+                        file_bytes
+                    )
+
                     if converted:
-                        st.success("Automatically detected date columns: " + ", ".join(map(str, converted)))
-                    st.success(f"Worksheet '{selected_sheet}' loaded successfully.")
+                        st.success(
+                            "Automatically detected date columns: "
+                            + ", ".join(map(str, converted))
+                        )
+
+                    st.success(
+                        f"Worksheet '{selected_sheet}' loaded successfully."
+                    )
+
             except Exception as error:
                 st.error(f"Unable to read Excel workbook: {error}")
+
                 if filename.lower().endswith(".xls"):
-                    st.info("For legacy .xls files, install xlrd: pip install xlrd")
+                    st.info(
+                        "For legacy .xls files, install xlrd: "
+                        "pip install xlrd"
+                    )
+
         else:
             if st.session_state.loaded_signature != signature:
                 try:
                     loaded = pd.read_csv(BytesIO(file_bytes))
                     loaded, converted = auto_convert_dates(loaded)
-                    set_dataset(loaded, filename, signature, None, file_bytes)
+
+                    set_dataset(
+                        loaded,
+                        filename,
+                        signature,
+                        None,
+                        file_bytes
+                    )
+
                     st.success("CSV uploaded successfully.")
+
                     if converted:
-                        st.success("Automatically detected date columns: " + ", ".join(map(str, converted)))
+                        st.success(
+                            "Automatically detected date columns: "
+                            + ", ".join(map(str, converted))
+                        )
+
                 except Exception as error:
                     st.error(f"Unable to read CSV file: {error}")
 
+    # DATASET OVERVIEW
     df = get_data()
+
     if df is not None:
-        st.divider()
-        st.subheader("Dataset Overview")
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Rows", f"{len(df):,}")
-        c2.metric("Columns", f"{len(df.columns):,}")
-        c3.metric("Missing cells", f"{int(df.isna().sum().sum()):,}")
-        c4.metric("Duplicate rows", f"{int(df.duplicated().sum()):,}")
-        display_table(df, "Complete Dataset Preview", 460)
+
+        st.markdown("---")
+        st.markdown("## Dataset Overview")
+        st.caption("A quick summary of your uploaded dataset.")
+
+        rows = len(df)
+        columns = len(df.columns)
+        missing = int(df.isna().sum().sum())
+        duplicates = int(df.duplicated().sum())
+
+        metrics = [
+            ("TOTAL ROWS", f"{rows:,}"),
+            ("TOTAL COLUMNS", f"{columns:,}"),
+            ("MISSING CELLS", f"{missing:,}"),
+            ("DUPLICATE ROWS", f"{duplicates:,}")
+        ]
+
+        metric_cols = st.columns(4)
+
+        for column, (label, value) in zip(metric_cols, metrics):
+            with column:
+                st.markdown(f"""
+                <div style="
+                    background:#FFFDF8;
+                    border:1px solid #E7E0D4;
+                    border-top:4px solid #87977A;
+                    border-radius:12px;
+                    padding:17px;
+                    min-height:100px;
+                ">
+                    <div style="font-size:11px;font-weight:700;
+                    letter-spacing:1px;color:#81796E;">
+                        {label}
+                    </div>
+                    <div style="font-size:25px;font-weight:800;
+                    color:#342F29;margin-top:12px;">
+                        {value}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # DATA PREVIEW
+        st.markdown("### Complete Dataset Preview")
+        st.caption("Review the records contained in your uploaded file.")
+
+        display_table(df, "Dataset Records", 460)
+
+        # COLUMN PROFILE
+        st.markdown("### Column Information")
+        st.caption(
+            "Understand the data type, missing values and unique values "
+            "for each column."
+        )
 
         profile = pd.DataFrame({
             "Column": df.columns.astype(str),
@@ -506,13 +1241,153 @@ elif st.session_state.page == "Upload Data":
             "Missing": df.isna().sum().values,
             "Unique": df.nunique().values
         })
-        display_table(profile, "Column Information", 360)
 
-        st.caption(f"Loaded file: {st.session_state.uploaded_filename}"+(f" | Worksheet: {st.session_state.loaded_sheet}" if st.session_state.loaded_sheet else ""))
+        display_table(profile, "Column Profile", 360)
 
-# ------------------------- DATA CLEANING ------------------
+        st.markdown("---")
+
+        st.caption(
+            f"Loaded file: {st.session_state.uploaded_filename}"
+            + (
+                f" | Worksheet: {st.session_state.loaded_sheet}"
+                if st.session_state.loaded_sheet else ""
+            )
+        )
+
+
 
 elif st.session_state.page == "Data Cleaning":
+
+    # DATAVORA DATA CLEANING THEME
+
+    st.markdown("""
+    <style>
+    /* Keep Data Cleaning download and action button text white */
+    div[data-testid="stDownloadButton"] button,
+    div[data-testid="stButton"] button {
+        color: #FFFFFF !important;
+    }
+
+    div[data-testid="stDownloadButton"] button *,
+    div[data-testid="stButton"] button * {
+        color: #FFFFFF !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+    st.markdown("""
+    <style>
+    /* Force readable text on all Data Cleaning tabs */
+    div[data-testid="stTabs"] [role="tab"] {
+        color: #342F29 !important;
+        opacity: 1 !important;
+        background-color: transparent !important;
+    }
+
+    div[data-testid="stTabs"] [role="tab"] * {
+        color: #342F29 !important;
+        opacity: 1 !important;
+    }
+
+    div[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+        color: #718266 !important;
+        border-bottom: 3px solid #87977A !important;
+    }
+
+    div[data-testid="stTabs"] [role="tab"][aria-selected="true"] * {
+        color: #718266 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+    st.markdown("""
+    <style>
+    /* KPI cards */
+    div[data-testid="stMetric"] {
+        background: #FFFDF8 !important;
+        border: 1px solid #E7E0D4 !important;
+        border-top: 3px solid #87977A !important;
+        border-radius: 13px !important;
+        padding: 17px !important;
+    }
+
+    div[data-testid="stMetric"] label {
+        color: #81796E !important;
+    }
+
+    div[data-testid="stMetric"] [data-testid="stMetricValue"],
+    div[data-testid="stMetric"] [data-testid="stMetricValue"] div {
+        color: #342F29 !important;
+    }
+
+    /* Highly visible Data Cleaning tabs */
+    div[data-testid="stTabs"] button[data-baseweb="tab"] {
+        color: #342F29 !important;
+        opacity: 1 !important;
+        font-weight: 600 !important;
+        background: transparent !important;
+    }
+
+    div[data-testid="stTabs"] button[data-baseweb="tab"] p,
+    div[data-testid="stTabs"] button[data-baseweb="tab"] span {
+        color: #342F29 !important;
+        opacity: 1 !important;
+    }
+
+    div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
+        color: #718266 !important;
+        border-bottom: 3px solid #87977A !important;
+    }
+
+    div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] p,
+    div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] span {
+        color: #718266 !important;
+    }
+
+    /* Tabs */
+    button[data-baseweb="tab"] {
+        color: #81796E !important;
+        font-weight: 600 !important;
+    }
+
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #342F29 !important;
+        border-bottom: 3px solid #87977A !important;
+    }
+
+    /* Dropdowns and multiselects */
+    div[data-baseweb="select"] > div {
+        background: #FFFDF8 !important;
+        border-color: #E7E0D4 !important;
+        color: #342F29 !important;
+    }
+
+    div[data-baseweb="select"] span {
+        color: #342F29 !important;
+    }
+
+    /* Text inputs */
+    div[data-testid="stTextInput"] input {
+        background: #FFFDF8 !important;
+        color: #342F29 !important;
+        border-color: #E7E0D4 !important;
+    }
+
+    /* Information and success messages */
+    div[data-testid="stAlert"] {
+        background: #E8EDE3 !important;
+        border: 1px solid #87977A !important;
+        border-radius: 12px !important;
+    }
+
+    div[data-testid="stAlert"] p {
+        color: #342F29 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
     st.title("Data Cleaning")
     st.write("Clean missing values, duplicate records, outliers and incorrect data types. Your original upload remains unchanged.")
     df = get_data()
@@ -626,7 +1501,7 @@ elif st.session_state.page == "Data Cleaning":
                         st.success("Outlier treatment applied.")
                         st.rerun()
                 else:
-                    st.success("No potential outliers detected using the 1.5 × IQR rule.")
+                    st.success("No potential outliers detected using the 1.5 Ãƒâ€” IQR rule.")
 
         with t4:
             profile = pd.DataFrame({"Column": df.columns.astype(str), "Current type": df.dtypes.astype(str).values})
@@ -693,7 +1568,38 @@ elif st.session_state.page == "Exploratory Analysis":
         st.subheader("Statistical summary")
         try:
             summary = df.describe(include="all").transpose()
-            display_table(summary, height=450)
+            summary = summary.round(2)
+
+            styled_summary = summary.style.format(
+                precision=2,
+                na_rep="N/A"
+            ).set_table_styles([
+                {
+                    "selector": "th",
+                    "props": [
+                        ("background-color", "#EDE8DD"),
+                        ("color", "#342F29"),
+                        ("font-weight", "700"),
+                        ("padding", "10px"),
+                        ("border", "1px solid #E7E0D4")
+                    ]
+                },
+                {
+                    "selector": "td",
+                    "props": [
+                        ("background-color", "#FFFDF8"),
+                        ("color", "#342F29"),
+                        ("padding", "10px"),
+                        ("border", "1px solid #E7E0D4")
+                    ]
+                },
+                {
+                    "selector": "tbody tr:nth-child(even) td",
+                    "props": [("background-color", "#F7F5F0")]
+                }
+            ])
+
+            st.table(styled_summary)
         except Exception as error:
             st.warning(f"Could not calculate full summary: {error}")
         st.subheader("Missing-value profile")
@@ -798,20 +1704,43 @@ elif st.session_state.page == "Visualizations":
 # ------------------------- SMART INSIGHTS -----------------
 
 elif st.session_state.page == "Smart Insights":
-    st.title("Smart Business Insights")
+    st.markdown("""
+    <div style="background:linear-gradient(120deg,#87977A,#A6AD86);
+                padding:30px;border-radius:18px;margin-bottom:24px;">
+        <div style="color:#FFFDF8;font-size:13px;font-weight:600;
+                    letter-spacing:1.5px;">DATAVORA INTELLIGENCE</div>
+        <h1 style="color:#FFFDF8!important;margin:8px 0 5px 0;">
+            Smart Business Insights
+        </h1>
+        <p style="color:#FFFDF8;margin:0;font-size:15px;">
+            Discover patterns, understand performance and turn your data
+            into meaningful business decisions.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
     df = get_data()
+
     if df is None:
         st.warning("Upload a dataset first.")
     else:
-        st.info(f"Analysis is based on {len(df):,} rows and {len(df.columns):,} columns in the currently selected worksheet.")
+        st.info(
+            f"Analysis is based on {len(df):,} rows and "
+            f"{len(df.columns):,} columns in the currently selected worksheet."
+        )
+
         total_missing = int(df.isna().sum().sum())
         duplicate_count = int(df.duplicated().sum())
         num_cols = analysis_numeric_columns(df)
+
+        st.markdown("### Dataset Overview")
+
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Rows", f"{len(df):,}")
-        c2.metric("Columns", f"{len(df.columns):,}")
-        c3.metric("Missing cells", f"{total_missing:,}")
-        c4.metric("Duplicate rows", f"{duplicate_count:,}")
+
+        c1.metric("Total Rows", f"{len(df):,}")
+        c2.metric("Total Columns", f"{len(df.columns):,}")
+        c3.metric("Missing Cells", f"{total_missing:,}")
+        c4.metric("Duplicate Rows", f"{duplicate_count:,}")
 
         sales_col = find_column(df, ["sales", "revenue", "amount", "total"])
         product_col = find_column(df, ["product", "item", "service"])
@@ -821,60 +1750,174 @@ elif st.session_state.page == "Smart Insights":
         customer_col = find_column(df, ["customer", "client", "buyer"])
         payment_col = find_column(df, ["payment_method", "payment", "method"])
 
-        st.subheader("Business performance")
+        st.markdown("---")
+        st.markdown("### Business Performance")
+        st.caption("Key performance indicators and business trends from your dataset.")
+
         if sales_col and pd.api.types.is_numeric_dtype(df[sales_col]):
             sales = pd.to_numeric(df[sales_col], errors="coerce")
+
             k1, k2, k3 = st.columns(3)
+
             k1.metric("Total " + str(sales_col), money(sales.sum()))
-            k2.metric("Average per record", money(sales.mean()))
-            k3.metric("Highest record", money(sales.max()))
+            k2.metric("Average per Record", money(sales.mean()))
+            k3.metric("Highest Record", money(sales.max()))
+
             if product_col:
-                product_sales = df.groupby(product_col, dropna=False)[sales_col].sum().sort_values(ascending=False)
+                product_sales = (
+                    df.groupby(product_col, dropna=False)[sales_col]
+                    .sum()
+                    .sort_values(ascending=False)
+                )
+
                 if not product_sales.empty:
-                    st.success(f"Top product by {sales_col}: **{product_sales.index[0]}** ({money(product_sales.iloc[0])}).")
-                    st.write("Product performance")
-                    st.bar_chart(product_sales)
+                    st.markdown("#### Product Performance")
+                    st.success(
+                        f"Top product by {sales_col}: "
+                        f"**{product_sales.index[0]}** "
+                        f"({money(product_sales.iloc[0])})."
+                    )
+                    product_chart_data = product_sales.rename("Total").reset_index()
+                    fig = px.bar(
+                        product_chart_data,
+                        x=product_col,
+                        y="Total",
+                        title="Sales by Product",
+                        color_discrete_sequence=["#87977A"]
+                    )
+                    st.plotly_chart(chart_layout(fig), use_container_width=True)
+
             if region_col:
-                region_sales = df.groupby(region_col, dropna=False)[sales_col].sum().sort_values(ascending=False)
+                region_sales = (
+                    df.groupby(region_col, dropna=False)[sales_col]
+                    .sum()
+                    .sort_values(ascending=False)
+                )
+
                 if not region_sales.empty:
-                    st.success(f"Top region by {sales_col}: **{region_sales.index[0]}** ({money(region_sales.iloc[0])}).")
-                    st.write("Regional performance")
-                    st.bar_chart(region_sales)
+                    st.markdown("#### Regional Performance")
+                    st.success(
+                        f"Top region by {sales_col}: "
+                        f"**{region_sales.index[0]}** "
+                        f"({money(region_sales.iloc[0])})."
+                    )
+                    region_chart_data = region_sales.rename("Total").reset_index()
+                    fig = px.bar(
+                        region_chart_data,
+                        x=region_col,
+                        y="Total",
+                        title="Sales by Region",
+                        color_discrete_sequence=["#87977A"]
+                    )
+                    st.plotly_chart(chart_layout(fig), use_container_width=True)
+
             if category_col:
-                category_sales = df.groupby(category_col, dropna=False)[sales_col].sum().sort_values(ascending=False)
+                category_sales = (
+                    df.groupby(category_col, dropna=False)[sales_col]
+                    .sum()
+                    .sort_values(ascending=False)
+                )
+
                 if not category_sales.empty:
-                    st.write("Category performance")
-                    st.bar_chart(category_sales)
+                    st.markdown("#### Category Performance")
+                    category_chart_data = category_sales.rename("Total").reset_index()
+                    fig = px.bar(
+                        category_chart_data,
+                        x=category_col,
+                        y="Total",
+                        title="Sales by Category",
+                        color_discrete_sequence=["#87977A"]
+                    )
+                    st.plotly_chart(chart_layout(fig), use_container_width=True)
+
             if date_col:
                 trend = df.dropna(subset=[date_col]).copy()
+
                 if not trend.empty:
                     trend["_period"] = trend[date_col].dt.to_period("M").astype(str)
                     monthly = trend.groupby("_period")[sales_col].sum()
-                    st.write("Monthly sales trend")
-                    st.line_chart(monthly)
-        else:
-            st.info("A sales/revenue/amount column was not identified. General data-quality and numerical insights are still available.")
 
-        st.subheader("Other dataset insights")
-        if customer_col:
-            st.write(f"Distinct customers: **{df[customer_col].nunique(dropna=True):,}**")
-        if payment_col:
-            mode = df[payment_col].mode(dropna=True)
-            if not mode.empty:
-                st.write(f"Most common payment method: **{mode.iloc[0]}**")
+                    st.markdown("#### Monthly Sales Trend")
+                    monthly_chart_data = monthly.rename("Total").reset_index()
+                    fig = px.line(
+                        monthly_chart_data,
+                        x="_period",
+                        y="Total",
+                        title="Monthly Sales Trend",
+                        markers=True,
+                        color_discrete_sequence=["#87977A"]
+                    )
+                    fig.update_traces(line=dict(width=3))
+                    st.plotly_chart(chart_layout(fig), use_container_width=True)
+
+        else:
+            st.info(
+                "A sales/revenue/amount column was not identified. "
+                "General data-quality and numerical insights are still available."
+            )
+
+        st.markdown("---")
+        st.markdown("### Other Dataset Insights")
+        st.caption("Additional observations based on the available dataset columns.")
+
+        insight_col1, insight_col2 = st.columns(2)
+
+        with insight_col1:
+            if customer_col:
+                st.markdown('<div class="card">', unsafe_allow_html=True)
+                st.markdown("**Customer Insights**")
+                st.markdown(
+                    f"Distinct customers: **{df[customer_col].nunique(dropna=True):,}**"
+                )
+                st.markdown('</div>', unsafe_allow_html=True)
+
+        with insight_col2:
+            if payment_col:
+                mode = df[payment_col].mode(dropna=True)
+
+                if not mode.empty:
+                    st.markdown('<div class="card">', unsafe_allow_html=True)
+                    st.markdown("**Payment Insights**")
+                    st.markdown(
+                        f"Most common payment method: **{mode.iloc[0]}**"
+                    )
+                    st.markdown('</div>', unsafe_allow_html=True)
+
         if num_cols:
+            st.markdown("#### Numerical Highlights")
+
             for col in num_cols:
                 series = pd.to_numeric(df[col], errors="coerce").dropna()
+
                 if len(series):
-                    st.write(f"**{col}:** minimum {money(series.min())} · maximum {money(series.max())} · average {money(series.mean())}")
-        if total_missing:
-            st.warning(f"{total_missing} missing cell(s) remain. Review them in Data Cleaning.")
-        else:
-            st.success("No missing cells detected in the current dataset.")
-        if duplicate_count:
-            st.warning(f"{duplicate_count} exact duplicate row(s) remain. Review them in Data Cleaning.")
-        else:
-            st.success("No exact duplicate rows detected.")
+                    st.markdown(
+                        f"**{col}:** Minimum {money(series.min())} "
+                        f"| Maximum {money(series.max())} "
+                        f"| Average {money(series.mean())}"
+                    )
+
+        st.markdown("---")
+        st.markdown("### Data Quality Observations")
+
+        quality_col1, quality_col2 = st.columns(2)
+
+        with quality_col1:
+            if total_missing:
+                st.warning(
+                    f"{total_missing:,} missing cell(s) remain. "
+                    "Review them in Data Cleaning."
+                )
+            else:
+                st.success("No missing cells detected in the current dataset.")
+
+        with quality_col2:
+            if duplicate_count:
+                st.warning(
+                    f"{duplicate_count:,} exact duplicate row(s) remain. "
+                    "Review them in Data Cleaning."
+                )
+            else:
+                st.success("No exact duplicate rows detected.")
 
 # ------------------------- ADVANCED ANALYTICS ------------
 
@@ -889,70 +1932,482 @@ elif st.session_state.page == "Advanced Analytics":
         with tab1:
             if len(numeric) >= 2:
                 corr = df[numeric].corr(numeric_only=True)
-                fig = px.imshow(corr, text_auto=".2f", color_continuous_scale="Greens", zmin=-1, zmax=1, title="Correlation between numeric measures")
-                st.plotly_chart(chart_layout(fig), use_container_width=True)
+                fig = px.imshow(
+                    corr,
+                    text_auto=".3f",
+                    color_continuous_scale=[
+                        [0.0, "#C58B83"],
+                        [0.25, "#E8D5C9"],
+                        [0.5, "#FFFDF8"],
+                        [0.75, "#C5D0B9"],
+                        [1.0, "#87977A"]
+                    ],
+                    zmin=-1,
+                    zmax=1,
+                    aspect="auto",
+                    title="Correlation Matrix"
+                )
+
+                fig.update_traces(
+                    xgap=5,
+                    ygap=5,
+                    textfont=dict(
+                        family="Inter",
+                        size=15,
+                        color="#342F29"
+                    ),
+                    hovertemplate=(
+                        "<b>%{y}</b> vs <b>%{x}</b>"
+                        "<br>Correlation: %{z:.3f}"
+                        "<extra></extra>"
+                    )
+                )
+
+                fig.update_layout(
+                    height=500,
+                    paper_bgcolor="#F7F5F0",
+                    plot_bgcolor="#FFFDF8",
+                    font=dict(
+                        family="Inter",
+                        color="#342F29",
+                        size=13
+                    ),
+                    title=dict(
+                        text="Correlation Matrix",
+                        font=dict(size=21, color="#342F29"),
+                        x=0.02
+                    ),
+                    xaxis=dict(
+                        title="",
+                        tickfont=dict(size=13, color="#342F29"),
+                        side="bottom"
+                    ),
+                    yaxis=dict(
+                        title="",
+                        tickfont=dict(size=13, color="#342F29"),
+                        autorange="reversed"
+                    ),
+                    coloraxis_colorbar=dict(
+                        title="Correlation",
+                        tickfont=dict(color="#342F29"),
+                        title_font=dict(color="#342F29")
+                    ),
+                    margin=dict(l=90, r=50, t=75, b=70)
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
                 st.caption("Identifier-like columns (for example, Order_ID) are excluded to reduce misleading correlations. Correlation does not establish causation.")
             else:
                 st.info("At least two numeric measurement columns are required.")
         with tab2:
+            st.markdown("### Outlier Detection")
+            st.caption("Identify unusually high or low values using the Interquartile Range (IQR) method.")
+
             if numeric:
                 col = st.selectbox("Choose measure", numeric, key="advanced_outlier_col")
                 s = pd.to_numeric(df[col], errors="coerce")
+
                 q1, q3 = s.quantile(.25), s.quantile(.75)
                 iqr = q3 - q1
-                low, high = q1 - 1.5*iqr, q3 + 1.5*iqr
+                low, high = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+
                 flagged = df[(s < low) | (s > high)]
-                st.metric("Potential outliers", len(flagged))
+                outlier_count = len(flagged)
+                total_valid = int(s.notna().sum())
+                outlier_percent = (outlier_count / total_valid * 100) if total_valid else 0
+
+                k1, k2, k3 = st.columns(3)
+
+                with k1:
+                    st.metric("Potential Outliers", f"{outlier_count:,}", f"{outlier_percent:.2f}% of valid records")
+
+                with k2:
+                    st.metric("Lower Boundary", f"{low:,.2f}" if pd.notna(low) else "N/A")
+
+                with k3:
+                    st.metric("Upper Boundary", f"{high:,.2f}" if pd.notna(high) else "N/A")
+
+                st.markdown("#### Outlier Distribution")
+
+                if s.notna().any():
+                    fig = px.box(
+                        x=s.dropna(),
+                        points="outliers",
+                        title=f"Outlier Distribution - {col}"
+                    )
+
+                    fig.update_traces(
+                        marker=dict(color="#87977A", size=7),
+                        line=dict(color="#718266", width=2),
+                        fillcolor="#DCE4D4"
+                    )
+
+                    fig.update_layout(
+                        paper_bgcolor="#F7F5F0",
+                        plot_bgcolor="#FFFDF8",
+                        font=dict(family="Inter", color="#342F29"),
+                        title=dict(font=dict(size=19, color="#342F29"), x=0.02),
+                        xaxis=dict(
+                            title=col,
+                            gridcolor="#E7E0D4",
+                            zerolinecolor="#E7E0D4"
+                        ),
+                        yaxis=dict(
+                            title="",
+                            showticklabels=False,
+                            gridcolor="#E7E0D4"
+                        ),
+                        margin=dict(l=35, r=35, t=65, b=55),
+                        height=350
+                    )
+
+                    st.plotly_chart(fig, use_container_width=True)
+
+                st.markdown("#### Flagged Records")
+
                 if not flagged.empty:
+                    st.caption(f"Showing {outlier_count:,} records outside the IQR boundaries.")
                     display_table(flagged, height=300)
                 else:
-                    st.success("No potential outliers detected.")
+                    st.success("No potential outliers detected for this measure.")
+
+                st.caption("Outliers are identified using the 1.5 ? IQR rule. A flagged value is unusual, but it is not necessarily an error.")
             else:
                 st.info("No numeric measures available.")
+
         with tab3:
+            st.markdown("### Relationship Analysis")
+            st.caption("Explore how two numeric measures move in relation to each other.")
+
             if len(numeric) >= 2:
-                xcol = st.selectbox("X measure", numeric, key="rel_x")
-                ycol = st.selectbox("Y measure", [c for c in numeric if c != xcol], key="rel_y")
-                fig = px.scatter(df, x=xcol, y=ycol, title=f"{ycol} compared with {xcol}")
-                st.plotly_chart(chart_layout(fig), use_container_width=True)
-                st.caption("The trend line describes association in this dataset; it should not be interpreted as proof of causation.")
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    xcol = st.selectbox("X measure", numeric, key="rel_x")
+
+                with col2:
+                    ycol = st.selectbox(
+                        "Y measure",
+                        [c for c in numeric if c != xcol],
+                        key="rel_y"
+                    )
+
+                relation_data = df[[xcol, ycol]].copy()
+                relation_data[xcol] = pd.to_numeric(relation_data[xcol], errors="coerce")
+                relation_data[ycol] = pd.to_numeric(relation_data[ycol], errors="coerce")
+                relation_data = relation_data.dropna()
+
+                if len(relation_data) >= 2:
+                    correlation = relation_data[xcol].corr(relation_data[ycol])
+
+                    if pd.notna(correlation):
+                        if correlation >= 0.7:
+                            strength = "Strong positive"
+                        elif correlation >= 0.3:
+                            strength = "Moderate positive"
+                        elif correlation > 0:
+                            strength = "Weak positive"
+                        elif correlation <= -0.7:
+                            strength = "Strong negative"
+                        elif correlation <= -0.3:
+                            strength = "Moderate negative"
+                        else:
+                            strength = "Weak negative or no linear relationship"
+                    else:
+                        strength = "Not available"
+
+                    m1, m2, m3 = st.columns(3)
+
+                    with m1:
+                        st.metric(
+                            "Correlation",
+                            f"{correlation:.3f}" if pd.notna(correlation) else "N/A"
+                        )
+
+                    with m2:
+                        st.metric("Valid Data Points", f"{len(relation_data):,}")
+
+                    with m3:
+                        st.metric("Relationship", strength)
+
+                    fig = px.scatter(
+                        relation_data,
+                        x=xcol,
+                        y=ycol,
+                        title=f"{ycol} vs {xcol}",
+                        opacity=0.8
+                    )
+
+                    fig.update_traces(
+                        marker=dict(
+                            color="#87977A",
+                            size=10,
+                            line=dict(color="#FFFDF8", width=1)
+                        ),
+                        hovertemplate=(
+                            f"<b>{xcol}</b>: %{{x}}"
+                            f"<br><b>{ycol}</b>: %{{y}}"
+                            "<extra></extra>"
+                        )
+                    )
+
+                    if relation_data[xcol].nunique() > 1:
+                        slope, intercept = np.polyfit(
+                            relation_data[xcol],
+                            relation_data[ycol],
+                            1
+                        )
+
+                        x_values = np.linspace(
+                            relation_data[xcol].min(),
+                            relation_data[xcol].max(),
+                            100
+                        )
+
+                        fig.add_trace(
+                            go.Scatter(
+                                x=x_values,
+                                y=slope * x_values + intercept,
+                                mode="lines",
+                                name="Trend line",
+                                line=dict(color="#A66F5B", width=3),
+                                hoverinfo="skip"
+                            )
+                        )
+
+                    fig.update_layout(
+                        height=470,
+                        paper_bgcolor="#F7F5F0",
+                        plot_bgcolor="#FFFDF8",
+                        font=dict(family="Inter", color="#342F29"),
+                        title=dict(
+                            font=dict(size=20, color="#342F29"),
+                            x=0.02
+                        ),
+                        xaxis=dict(
+                            title=xcol,
+                            gridcolor="#E7E0D4",
+                            zerolinecolor="#E7E0D4"
+                        ),
+                        yaxis=dict(
+                            title=ycol,
+                            gridcolor="#E7E0D4",
+                            zerolinecolor="#E7E0D4"
+                        ),
+                        legend=dict(
+                            bgcolor="#FFFDF8",
+                            font=dict(color="#342F29")
+                        ),
+                        margin=dict(l=55, r=35, t=70, b=55)
+                    )
+
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    st.info(
+                        f"Interpretation: The selected measures show a "
+                        f"{strength.lower()} relationship. "
+                        "Correlation describes association in this dataset; "
+                        "it does not prove causation."
+                    )
+                else:
+                    st.info("At least two valid paired data points are required.")
             else:
                 st.info("At least two numeric measures are required.")
 
 # ------------------------- REPORTS ------------------------
 
 
-elif st.session_state.page == "Reports":
+elif st.session_state.page == "Power BI":
     from pathlib import Path
+    import streamlit.components.v1 as components
 
-    st.title("Reports & Business Intelligence")
-    st.write("Access your DATAVORA reports, exports and Power BI dashboards.")
 
-    # =====================================================
-    # POWER BI INTEGRATION
-    # =====================================================
+    st.markdown("""
+    <style>
+    div.stButton > button[kind="primary"],
+    div.stLinkButton > a {
+        background-color: #87977A !important;
+        border-color: #87977A !important;
+        color: #FFFDF8 !important;
+    }
+    div.stLinkButton > a:hover {
+        background-color: #718266 !important;
+        border-color: #718266 !important;
+        color: #FFFDF8 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+    st.markdown("""
+    <style>
+    /* Power BI information boxes */
+    [data-testid="stAlert"] {
+        background: #E8EDE3 !important;
+        border: 1px solid #87977A !important;
+        border-radius: 12px !important;
+        color: #342F29 !important;
+    }
+
+    [data-testid="stAlert"] > div {
+        background: transparent !important;
+    }
+
+    [data-testid="stAlert"] p {
+        color: #342F29 !important;
+    }
+
+    /* Power BI input label */
+    [data-testid="stWidgetLabel"] p {
+        color: #342F29 !important;
+        font-weight: 600 !important;
+    }
+
+    /* Power BI URL input */
+    [data-testid="stTextInput"] input {
+        background-color: #FFFDF8 !important;
+        color: #342F29 !important;
+        border: 1px solid #E7E0D4 !important;
+        border-radius: 10px !important;
+    }
+
+    [data-testid="stTextInput"] input::placeholder {
+        color: #81796E !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # HERO BANNER
+    st.markdown("""
+    <div style="
+        background:linear-gradient(120deg,#87977A,#A6AD86);
+        padding:35px 38px;
+        border-radius:18px;
+        margin-bottom:25px;
+        color:#FFFDF8;
+    ">
+        <div style="font-size:12px;letter-spacing:2px;color:#D8C3A5;">
+            BUSINESS INTELLIGENCE
+        </div>
+        <h1 style="color:#FFFDF8!important;font-size:34px;margin:12px 0;">
+            Power BI Reports
+        </h1>
+        <p style="color:#EDE8DD;font-size:15px;margin-bottom:0;">
+            Transform your data into interactive dashboards and meaningful
+            business insights with Microsoft Power BI.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # CREATE DASHBOARD
+    st.markdown("## Create Your Dashboard")
+
+    st.markdown("""
+    <div style="background:#FFFDF8;border:1px solid #E7E0D4;
+    border-radius:15px;padding:24px;margin-bottom:18px;">
+        <h3 style="margin-top:0;">Microsoft Power BI Desktop</h3>
+        <p style="color:#81796E;">
+            Build professional reports, explore your data and create
+            interactive visualizations using Power BI Desktop.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.link_button(
+        "Open Microsoft Power BI",
+        "https://app.powerbi.com/",
+        type="primary",
+        use_container_width=True
+    )
 
     st.markdown("---")
-    st.subheader("Power BI Dashboards")
-    st.caption("Explore dashboards created using Microsoft Power BI.")
+
+    # HOW IT WORKS
+    st.markdown("## How It Works")
+
+    c1, c2, c3 = st.columns(3)
+
+    cards = [
+        (c1, "01", "Create",
+         "Connect your dataset and create reports using Power BI Desktop."),
+        (c2, "02", "Design",
+         "Build interactive charts, KPIs, filters and business dashboards."),
+        (c3, "03", "Share",
+         "Export your reports as PDF or share supported Power BI report links.")
+    ]
+
+    for col, number, title, description in cards:
+        with col:
+            st.markdown(f"""
+            <div style="background:#FFFDF8;border:1px solid #E7E0D4;
+            border-radius:14px;padding:21px;min-height:170px;">
+                <div style="color:#87977A;font-size:13px;
+                font-weight:700;">{number}</div>
+                <h3 style="margin:12px 0 8px;">{title}</h3>
+                <p style="font-size:13px;color:#81796E;
+                line-height:1.6;">{description}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # REPORT EMBEDDING
+    st.markdown("## Power BI Report Viewer")
+    st.write("Enter a supported Power BI embed URL to view your report here.")
+
+    report_url = st.text_input(
+        "Power BI Report URL",
+        placeholder="Paste your Power BI embed URL here...",
+        key="datavora_powerbi_url"
+    )
+
+    if report_url:
+        if report_url.startswith("https://") and (
+            "powerbi.com" in report_url.lower()
+        ):
+            st.markdown("### Published Report")
+
+            components.iframe(
+                report_url,
+                height=600,
+                scrolling=True
+            )
+
+            st.caption(
+                "The report must allow embedding and your account must "
+                "have the required access and licensing."
+            )
+        else:
+            st.warning("Please enter a valid HTTPS Power BI URL.")
+
+    st.info(
+        "Private Power BI reports require appropriate permissions and "
+        "licensing. Power BI Desktop free does not provide unrestricted "
+        "private report sharing or embedding."
+    )
+
+    st.markdown("---")
+
+    # POWER BI FILES
+    st.markdown("## Available Power BI Dashboards")
 
     powerbi_root = Path(__file__).parent / "powerbi"
     dashboard_dir = powerbi_root / "dashboards"
     preview_dir = powerbi_root / "previews"
     report_dir = powerbi_root / "reports"
 
-    dashboard_dir.mkdir(parents=True, exist_ok=True)
-    preview_dir.mkdir(parents=True, exist_ok=True)
-    report_dir.mkdir(parents=True, exist_ok=True)
+    for folder in [dashboard_dir, preview_dir, report_dir]:
+        folder.mkdir(parents=True, exist_ok=True)
 
     dashboard_files = sorted(dashboard_dir.glob("*.pbix"))
+
     preview_files = sorted(
         p for p in preview_dir.iterdir()
         if p.suffix.lower() in [".png", ".jpg", ".jpeg", ".webp"]
     )
+
     powerbi_pdfs = sorted(report_dir.glob("*.pdf"))
 
-    # Dashboard previews
     st.markdown("### Dashboard Gallery")
 
     if preview_files:
@@ -966,12 +2421,8 @@ elif st.session_state.page == "Reports":
                     use_container_width=True
                 )
     else:
-        st.info(
-            "Power BI dashboard previews will appear here "
-            "once the dashboard images are added to powerbi/previews."
-        )
+        st.info("Dashboard previews will appear here when added.")
 
-    # Original PBIX downloads
     st.markdown("### Power BI Project Files")
 
     if dashboard_files:
@@ -980,7 +2431,9 @@ elif st.session_state.page == "Reports":
                 col1, col2 = st.columns([3, 1])
 
                 with col1:
-                    st.markdown(f"**{dashboard.stem.replace('_', ' ').title()}**")
+                    st.markdown(
+                        f"**{dashboard.stem.replace('_', ' ').title()}**"
+                    )
                     st.caption("Microsoft Power BI project (.pbix)")
 
                 with col2:
@@ -993,12 +2446,8 @@ elif st.session_state.page == "Reports":
                         use_container_width=True
                     )
     else:
-        st.info(
-            "Power BI project files will appear here "
-            "once added to powerbi/dashboards."
-        )
+        st.info("Power BI project files will appear here when added.")
 
-    # Exported Power BI PDF reports
     st.markdown("### Power BI PDF Reports")
 
     if powerbi_pdfs:
@@ -1007,8 +2456,10 @@ elif st.session_state.page == "Reports":
                 col1, col2 = st.columns([3, 1])
 
                 with col1:
-                    st.markdown(f"**{report.stem.replace('_', ' ').title()}**")
-                    st.caption("Power BI exported PDF report")
+                    st.markdown(
+                        f"**{report.stem.replace('_', ' ').title()}**"
+                    )
+                    st.caption("Exported Power BI PDF report")
 
                 with col2:
                     st.download_button(
@@ -1020,15 +2471,41 @@ elif st.session_state.page == "Reports":
                         use_container_width=True
                     )
     else:
-        st.info(
-            "Exported Power BI reports will appear here "
-            "once added to powerbi/reports."
-        )
+        st.info("Power BI PDF reports will appear here when added.")
 
-    st.markdown("---")
 
-    # =====================================================
-    # DATAVORA DATA EXPORTS
+elif st.session_state.page == "Download Reports":
+
+    st.markdown("""
+    <style>
+    div[data-testid="stDownloadButton"] button {
+        background-color: #87977A !important;
+        color: #FFFDF8 !important;
+        border: 1px solid #87977A !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+    }
+    div[data-testid="stDownloadButton"] button p {
+        color: #FFFDF8 !important;
+    }
+    div[data-testid="stDownloadButton"] button:hover {
+        background-color: #718266 !important;
+        color: #FFFDF8 !important;
+    }
+    [data-testid="stAlert"] {
+        background-color: #E8EDE3 !important;
+        border: 1px solid #C5D0B9 !important;
+        border-radius: 12px !important;
+        color: #342F29 !important;
+    }
+    [data-testid="stAlert"] p,
+    [data-testid="stAlert"] span {
+        color: #342F29 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
     # =====================================================
 
     st.subheader("DATAVORA Data Exports")
@@ -1108,7 +2585,10 @@ elif st.session_state.page == "Reports":
 st.divider()
 st.html("""
 <div style="text-align:center;color:#81796E;font-size:12px;padding:8px 0;">
-  DATAVORA · Turn Data Into Decisions<br>
+  DATAVORA Ã‚Â· Turn Data Into Decisions<br>
   Universal Data Analytics & Business Intelligence Platform
 </div>
 """)
+
+
+
