@@ -9,13 +9,13 @@ from io import BytesIO
 from datetime import datetime
 
 # =========================================================
-# DATAVORA — Universal Data Analytics Platform
+# DATAVORA â€” Universal Data Analytics Platform
 # Improved core application
 # =========================================================
 
 st.set_page_config(
     page_title="DATAVORA | Data Analytics Platform",
-    page_icon="📊",
+    page_icon="ðŸ“Š",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -111,7 +111,7 @@ def display_table(df, title=None, height=420):
         use_container_width=True,
         hide_index=False
     )
-    st.caption(f"{len(df):,} rows × {len(df.columns):,} columns. Use the table's horizontal scrollbar to inspect every column.")
+    st.caption(f"{len(df):,} rows Ã— {len(df.columns):,} columns. Use the table's horizontal scrollbar to inspect every column.")
 
 def export_excel(df, sheet_name="Data"):
     output = BytesIO()
@@ -390,10 +390,15 @@ with st.sidebar:
     """)
     st.markdown("### WORKSPACE")
     pages = [
-        ("🏠", "Dashboard"), ("📁", "Upload Data"),
-        ("🧹", "Data Cleaning"), ("📊", "Exploratory Analysis"),
-        ("📈", "Visualizations"), ("💡", "Smart Insights"),
-        ("🧠", "Advanced Analytics"), ("📄", "Reports")
+        ("🏠", "Dashboard"),
+        ("📁", "Upload Data"),
+        ("🧹", "Data Cleaning"),
+        ("📊", "Exploratory Analysis"),
+        ("📈", "Visualizations"),
+        ("💡", "Smart Insights"),
+        ("🧠", "Advanced Analytics"),
+        ("📊", "Power BI"),
+        ("📥", "Download Reports")
     ]
     for icon, page_name in pages:
         st.button(
@@ -409,7 +414,7 @@ with st.sidebar:
     <div style="background:#FFFDF8;border:1px solid #E7E0D4;border-radius:12px;padding:15px;">
       <b>DATAVORA Workspace</b>
       <div style="font-size:12px;color:#81796E;margin-top:7px;">Your universal data analytics workspace.</div>
-      <div style="font-size:11px;color:#87977A;margin-top:12px;">● SYSTEM ONLINE</div>
+      <div style="font-size:11px;color:#87977A;margin-top:12px;">â— SYSTEM ONLINE</div>
     </div>
     """)
 
@@ -433,7 +438,7 @@ if st.session_state.page == "Dashboard":
     c4.metric("Missing cells", f"{int(df.isna().sum().sum()):,}" if df is not None else "0")
     if df is not None:
         st.markdown("### Current dataset")
-        st.info(f"{st.session_state.uploaded_filename}"+(f" · Worksheet: {st.session_state.loaded_sheet}" if st.session_state.loaded_sheet else ""))
+        st.info(f"{st.session_state.uploaded_filename}"+(f" Â· Worksheet: {st.session_state.loaded_sheet}" if st.session_state.loaded_sheet else ""))
         display_table(df.head(10), height=320)
         if st.button("Open Smart Insights", type="primary"):
             navigate("Smart Insights")
@@ -626,7 +631,7 @@ elif st.session_state.page == "Data Cleaning":
                         st.success("Outlier treatment applied.")
                         st.rerun()
                 else:
-                    st.success("No potential outliers detected using the 1.5 × IQR rule.")
+                    st.success("No potential outliers detected using the 1.5 Ã— IQR rule.")
 
         with t4:
             profile = pd.DataFrame({"Column": df.columns.astype(str), "Current type": df.dtypes.astype(str).values})
@@ -866,7 +871,7 @@ elif st.session_state.page == "Smart Insights":
             for col in num_cols:
                 series = pd.to_numeric(df[col], errors="coerce").dropna()
                 if len(series):
-                    st.write(f"**{col}:** minimum {money(series.min())} · maximum {money(series.max())} · average {money(series.mean())}")
+                    st.write(f"**{col}:** minimum {money(series.min())} Â· maximum {money(series.max())} Â· average {money(series.mean())}")
         if total_missing:
             st.warning(f"{total_missing} missing cell(s) remain. Review them in Data Cleaning.")
         else:
@@ -922,7 +927,7 @@ elif st.session_state.page == "Advanced Analytics":
 # ------------------------- REPORTS ------------------------
 
 
-elif st.session_state.page == "Reports":
+elif st.session_state.page == "Power BI":
     from pathlib import Path
 
     st.title("Reports & Business Intelligence")
@@ -1025,10 +1030,9 @@ elif st.session_state.page == "Reports":
             "once added to powerbi/reports."
         )
 
-    st.markdown("---")
 
-    # =====================================================
-    # DATAVORA DATA EXPORTS
+elif st.session_state.page == "Download Reports":
+
     # =====================================================
 
     st.subheader("DATAVORA Data Exports")
@@ -1108,7 +1112,8 @@ elif st.session_state.page == "Reports":
 st.divider()
 st.html("""
 <div style="text-align:center;color:#81796E;font-size:12px;padding:8px 0;">
-  DATAVORA · Turn Data Into Decisions<br>
+  DATAVORA Â· Turn Data Into Decisions<br>
   Universal Data Analytics & Business Intelligence Platform
 </div>
 """)
+
